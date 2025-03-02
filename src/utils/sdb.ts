@@ -40,3 +40,20 @@ export async function isSdbServerRunning(): Promise<boolean> {
 export async function startSdbServer(): Promise<unknown> {
   return runShellCommand('sdb start-server');
 }
+
+export async function stopSdbServer(): Promise<unknown> {
+  return runShellCommand('sdb kill-server');
+}
+
+export async function restartSdbServer(): Promise<unknown> {
+  await stopSdbServer();
+  return startSdbServer();
+}
+
+export async function connectSdbDevice(ip: string): Promise<unknown> {
+  return runShellCommand(`sdb connect ${ip}`);
+}
+
+export async function disconnectSdbDevice(ip: string): Promise<unknown> {
+  return runShellCommand(`sdb disconnect ${ip}`);
+}

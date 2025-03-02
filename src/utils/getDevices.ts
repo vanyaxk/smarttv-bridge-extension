@@ -42,8 +42,10 @@ export async function getDevices(): Promise<DeviceInfo[]> {
             tizenVersion = "2.3"; // 2015
           }
         
+        const parsedTizenVersion = tizenVersion !== "unknown" ? `Tizen ${tizenVersion}` : tizenVersion;
+
         // Add this device to our array
-        devices.push({ ip, model, tizen: tizenVersion });
+        devices.push({ ip, model, tizenVersion: parsedTizenVersion });
       }
     }
   } catch (e) {

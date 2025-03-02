@@ -6,6 +6,10 @@ export class DeviceManager {
     private context: vscode.ExtensionContext | undefined;
     private outputChannel: vscode.OutputChannel | undefined;
     private readonly STORAGE_KEY = 'tizenDevices';
+    
+    // Event emitter for device changes
+    private _onDevicesChanged: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
+    public readonly onDevicesChanged: vscode.Event<void> = this._onDevicesChanged.event;
 
     constructor() {        
     }
@@ -30,6 +34,12 @@ export class DeviceManager {
         }
     }
 
+    /**
+     * Fires the devicesChanged event to notify subscribers
+     */
+    private fireDevicesChanged(): void {
+        this._onDevicesChanged.fire();
+    }
 
     /**
      * Get all stored devices
@@ -41,13 +51,15 @@ export class DeviceManager {
     
     /**
      * Add or update a device in the list
+     * 
+     * @returns true if the device was added, false if it was updated
      */
-    public async addOrUpdateDevice(device: TizenDevice): Promise<void> {
+    public async addOrUpdateDevice(device: TizenDevice): Promise<boolean> {
         this.ensureInitialized();
         const devices = this.getDevices();
         
         // Check if device already exists
-        const index = devices.findIndex(d => d.id === device.id);
+        const index = devices.findIndex(d => d.ip === device.ip);
         
         if (index >= 0) {
             // Update existing device
@@ -66,20 +78,29 @@ export class DeviceManager {
         
         // Save to storage
         await this.context!.globalState.update(this.STORAGE_KEY, devices);
-        this.outputChannel!.appendLine(`Device ${device.id} saved to history`);
+        this.outputChannel!.appendLine(`Device ${device.ip} saved to history`);
+
+        // Notify subscribers that the device list has changed
+        this.fireDevicesChanged();
+
+        // If the device was added before, return 
+        return index < 0;
     }
     
     /**
      * Remove a device from the list
      */
-    public async removeDevice(deviceId: string): Promise<void> {
+    public async removeDevice(ip: string): Promise<void> {
         this.ensureInitialized();
         const devices = this.getDevices();
-        const filteredDevices = devices.filter(d => d.id !== deviceId);
+        const filteredDevices = devices.filter(d => d.ip !== ip);
         
         if (devices.length !== filteredDevices.length) {
             await this.context!.globalState.update(this.STORAGE_KEY, filteredDevices);
-            this.outputChannel!.appendLine(`Device ${deviceId} removed from history`);
+            this.outputChannel!.appendLine(`Device ${ip} removed from history`);
+            
+            // Notify subscribers that the device list has changed
+            this.fireDevicesChanged();
         }
     }
     
@@ -90,67 +111,54 @@ export class DeviceManager {
         this.ensureInitialized();
         await this.context!.globalState.update(this.STORAGE_KEY, []);
         this.outputChannel!.appendLine('Device history cleared');
-    }
-    
-    /**
-     * Add device from SDB connection
-     */
-    public async addDeviceFromConnection(ipAddress: string, modelInfo?: string): Promise<TizenDevice> {
-        this.ensureInitialized();
-        const device: TizenDevice = {
-            id: ipAddress,
-            lastConnected: new Date().toISOString()
-        };
         
-        if (modelInfo) {
-            device.model = modelInfo;
-            // Detect Tizen version from model if possible
-            device.tizenVersion = this.detectTizenVersionFromModel(modelInfo);
-        }
-        
-        await this.addOrUpdateDevice(device);
-        return device;
-    }
-    
-    /**
-     * Get a specific device by ID
-     */
-    public getDeviceById(deviceId: string): TizenDevice | undefined {
-        this.ensureInitialized();
-        const devices = this.getDevices();
-        return devices.find(d => d.id === deviceId);
+        // Notify subscribers that the device list has changed
+        this.fireDevicesChanged();
     }
     
     /**
      * Update the friendly name of a device
      */
-    public async updateDeviceName(deviceId: string, name: string): Promise<void> {
+    public async updateDeviceName(ip: string, name: string): Promise<void> {
         this.ensureInitialized();
         const devices = this.getDevices();
-        const device = devices.find(d => d.id === deviceId);
+        const device = devices.find(d => d.ip === ip);
         
         if (device) {
             device.name = name;
             await this.context!.globalState.update(this.STORAGE_KEY, devices);
-            this.outputChannel!.appendLine(`Updated name for device ${deviceId} to "${name}"`);
+            this.outputChannel!.appendLine(`Updated name for device ${ip} to "${name}"`);
+            
+            // Notify subscribers that the device list has changed
+            this.fireDevicesChanged();
         }
     }
     
     /**
-     * Detect Tizen version from model number
+     * Update the connection status of a device
      */
-    private detectTizenVersionFromModel(model: string): string | undefined {
-        if (!model) {return undefined;}
+    public async updateConnectionStatus(ip: string, isConnected: boolean): Promise<void> {
+        this.ensureInitialized();
+        const devices = this.getDevices();
+        const device = devices.find(d => d.ip === ip);
         
-        const normalizedModel = model.toUpperCase();
-        
-        if (normalizedModel.includes("CU") || normalizedModel.includes("DU")) {return "7.0";} // 2023-2024
-        if (normalizedModel.includes("BU")) {return "6.5";} // 2022
-        if (normalizedModel.includes("AU")) {return "6.0";} // 2021
-        if (normalizedModel.includes("TU")) {return "5.5";} // 2020
-        if (normalizedModel.includes("RU")) {return "5.0";} // 2019
-        if (normalizedModel.includes("NU")) {return "4.0";} // 2018
-        
-        return undefined;
+        if (device) {
+            device.isConnected = isConnected;
+            if (isConnected) {
+                device.lastConnected = new Date().toISOString();
+            }
+            await this.context!.globalState.update(this.STORAGE_KEY, devices);
+            this.outputChannel!.appendLine(`Updated connection status for device ${ip}: ${isConnected ? 'Connected' : 'Disconnected'}`);
+            
+            // Notify subscribers that the device list has changed
+            this.fireDevicesChanged();
+        }
+    }
+    
+    /**
+     * Dispose the event emitter
+     */
+    public dispose(): void {
+        this._onDevicesChanged.dispose();
     }
 }

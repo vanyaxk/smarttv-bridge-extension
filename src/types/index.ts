@@ -1,13 +1,11 @@
 export interface DeviceInfo {
     ip: string;
     model: string;
-    tizen: string;
+    tizenVersion: string;
   }
 
-export interface TizenDevice {
-    id: string;        
+export interface TizenDevice extends DeviceInfo {
     name?: string;     
-    model?: string;    
-    tizenVersion?: string;
-    lastConnected: string;
+    lastConnected?: string;
+    isConnected?: boolean;
 }

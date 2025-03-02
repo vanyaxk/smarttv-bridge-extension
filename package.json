@@ -29,6 +29,28 @@
         }
       ]
     },
+    "menus": {
+      "view/item/context": [
+        {
+          "command": "tizen-commander.connectToDeviceFromTree",
+          "when": "view == tizenDevices && viewItem == disconnectedDevice",
+          "group": "inline"
+        },
+        {
+          "command": "tizen-commander.disconnectDeviceFromTree",
+          "when": "view == tizenDevices && viewItem == connectedDevice",
+          "group": "inline"
+        },
+        {
+          "command": "tizen-commander.renameDeviceFromTree",
+          "when": "view == tizenDevices && (viewItem == connectedDevice || viewItem == disconnectedDevice)"
+        },
+        {
+          "command": "tizen-commander.copyDeviceDetailValue",
+          "when": "view == tizenDevices && viewItem =~ /deviceDetail-.*/"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "tizen-commander.runCommand",
@@ -49,6 +71,25 @@
       {
         "command": "tizen-commander.connectToDevice",
         "title": "Tizen: Connect To Device"
+      },
+      {
+        "command": "tizen-commander.renameDeviceFromTree",
+        "title": "Rename Device"
+      },
+      {
+        "command": "tizen-commander.connectToDeviceFromTree",
+        "title": "Connect",
+        "icon": "$(plug)"
+      },
+      {
+        "command": "tizen-commander.disconnectDeviceFromTree",
+        "title": "Disconnect",
+        "icon": "$(debug-disconnect)"
+      },
+      {
+        "command": "tizen-commander.copyDeviceDetailValue",
+        "title": "Copy Value",
+        "icon": "$(copy)"
       }
     ]
   },
@@ -57,7 +98,7 @@
     "vscode:prepublish": "yarn run package",
     "compile": "yarn run check-types && yarn run lint && node esbuild.js",
     "watch": "npm-run-all -p watch:*",
-    "watch:esbuild": "node esbuild.js --watch",
+    "watch:esbuild": "node esbuild.js",
     "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
     "package": "yarn run check-types && yarn run lint && node esbuild.js --production",
     "compile-tests": "tsc -p . --outDir out",

@@ -1,9 +1,14 @@
 import * as vscode from 'vscode';
 import { isSdbServerRunning, startSdbServer } from '../utils/sdb';
 import { execAsync } from '../utils/cmd';
+import { DeviceManager } from '../managers/deviceManager';
+import { getDevices } from '../utils/getDevices';
+import { generateRandomDeviceName } from '../utils/generateDeviceName';
+import { showVSCodeNamePrompt } from '../utils/showVSCodeNamePrompt';
 
 
 export function createTizenDeviceConnector(output: vscode.OutputChannel): vscode.Disposable {
+    const deviceManager = DeviceManager.getInstance();
     return vscode.commands.registerCommand('tizen-commander.connectToDevice', async () => {
         output.show(true);
         output.appendLine('Checking SDB server status...');
@@ -28,7 +33,7 @@ export function createTizenDeviceConnector(output: vscode.OutputChannel): vscode
                 return null; // Null means valid
             }
         });
-
+        const deviceInList = deviceManager.getDevices().find(d => d.ip === ipAddress);
         if (ipAddress) {
             output.appendLine(`Connecting to device at ${ipAddress}...`);
             
@@ -41,18 +46,35 @@ export function createTizenDeviceConnector(output: vscode.OutputChannel): vscode
                 if (stdout && stdout.includes('connected')) {
                     vscode.window.showInformationMessage(`Successfully connected to ${ipAddress}`);
                     
-                    // Refresh the devices list if you have that command
+                    if (!!deviceInList) {
+                        // Still update the lastConnected timestamp
+                        deviceManager.addOrUpdateDevice(deviceInList);
+                        output.appendLine('Device already in list');
+                        return; 
+                    }
+
+                    // Refresh the devices list if you  have that command
+                    // Add the device to the list of devices
                     try {
+                        
+                        const devices = await getDevices();
+                        const lastAddedDevice = devices[devices.length - 1];
+                        const deviceName = await showVSCodeNamePrompt();
+                        const newDevice = {
+                            ...lastAddedDevice,
+                            name: deviceName,
+                        };
+                        deviceManager.addOrUpdateDevice(newDevice);
                         await vscode.commands.executeCommand('tizen-commander.refreshDevices');
                     } catch (e) {
                         // Command might not exist yet, that's fine
                     }
                 } else {
-                    vscode.window.showErrorMessage(`Failed to connect to ${ipAddress}`);
+                    vscode.window.showErrorMessage(`Failed to connect to ${ipAddress}. Try restarting the SDB server`);
                 }
             } catch (error) {
                 output.appendLine(`Error: ${error}`);
-                vscode.window.showErrorMessage(`Connection failed: ${error}`);
+                vscode.window.showErrorMessage(`Connection failed: ${error}. Try restarting the SDB server`);
             }
         }
     });
