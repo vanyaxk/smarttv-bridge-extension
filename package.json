@@ -1,0 +1,86 @@
+{
+  "name": "smarttv-bridge",
+  "displayName": "SmartTV Bridge",
+  "description": "A useful tool to quickly connect with your TV",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.97.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "tizen-explorer",
+          "title": "Tizen",
+          "icon": "resources/tizen.svg"
+        }
+      ]
+    },
+    "views": {
+      "tizen-explorer": [
+        {
+          "id": "tizenDevices",
+          "name": "Devices"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "tizen-commander.runCommand",
+        "title": "Tizen: Run Command"
+      },
+      {
+        "command": "tizen-commander.buildPackage",
+        "title": "Tizen: Build Package"
+      },
+      {
+        "command": "tizen-commander.installPackage",
+        "title": "Tizen: Install Package"
+      },
+      {
+        "command": "tizen-commander.gatherDevices",
+        "title": "Tizen: Gather Devices"
+      },
+      {
+        "command": "tizen-commander.connectToDevice",
+        "title": "Tizen: Connect To Device"
+      }
+    ]
+  },
+  "scripts": {
+    "prepare": "husky",
+    "vscode:prepublish": "yarn run package",
+    "compile": "yarn run check-types && yarn run lint && node esbuild.js",
+    "watch": "npm-run-all -p watch:*",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "package": "yarn run check-types && yarn run lint && node esbuild.js --production",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "yarn run compile-tests && yarn run compile && yarn run lint",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.7.1",
+    "@commitlint/config-conventional": "^19.7.1",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "20.x",
+    "@types/vscode": "^1.97.0",
+    "@typescript-eslint/eslint-plugin": "^8.22.0",
+    "@typescript-eslint/parser": "^8.22.0",
+    "@vscode/test-cli": "^0.0.10",
+    "@vscode/test-electron": "^2.4.1",
+    "esbuild": "^0.24.2",
+    "eslint": "^9.19.0",
+    "husky": "^9.1.7",
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.7.3"
+  }
+}
