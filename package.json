@@ -48,6 +48,11 @@
         {
           "command": "tizen-commander.copyDeviceDetailValue",
           "when": "view == tizenDevices && viewItem =~ /deviceDetail-.*/"
+        },
+        {
+          "command": "tizen-commander.restartSdbServer",
+          "when": "view == tizenDevices && viewItem == sdbStatusRow",
+          "group": "inline"
         }
       ]
     },
@@ -90,6 +95,11 @@
         "command": "tizen-commander.copyDeviceDetailValue",
         "title": "Copy Value",
         "icon": "$(copy)"
+      },
+      {
+        "command": "tizen-commander.restartSdbServer",
+        "title": "Restart SDB Server",
+        "icon": "$(play-circle)"
       }
     ]
   },

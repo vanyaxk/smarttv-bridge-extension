@@ -1,45 +1,114 @@
 import * as vscode from 'vscode';
 import { DeviceManager } from '../../managers/deviceManager';
 import { TizenDevice } from '../../types';
-import { connectSdbDevice, disconnectSdbDevice } from '../../utils/sdb';
+import { connectSdbDevice, disconnectSdbDevice, isSdbServerRunning, startSdbServer } from '../../utils/sdb';
 import { showVSCodeNamePrompt } from '../../utils/showVSCodeNamePrompt';
 import { DeviceTreeItem } from './item';
 import { DeviceDetailTreeItem } from './detail';
-// Define tree item types for our hierarchy
+import { SdbStatusTreeItem } from '../sdbStatusPanel';
 
 // Define a device tree data provider
-export class DeviceTreeDataProvider implements vscode.TreeDataProvider<DeviceTreeItem | DeviceDetailTreeItem> {
-  private _onDidChangeTreeData: vscode.EventEmitter<DeviceTreeItem | DeviceDetailTreeItem | undefined | null | void> = 
-    new vscode.EventEmitter<DeviceTreeItem | DeviceDetailTreeItem | undefined | null | void>();
+export class DeviceTreeDataProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
+  private _onDidChangeTreeData: vscode.EventEmitter<vscode.TreeItem | undefined | null | void> = 
+    new vscode.EventEmitter<vscode.TreeItem | undefined | null | void>();
   
-  readonly onDidChangeTreeData: vscode.Event<DeviceTreeItem | DeviceDetailTreeItem | undefined | null | void> = 
+  readonly onDidChangeTreeData: vscode.Event<vscode.TreeItem | undefined | null | void> = 
     this._onDidChangeTreeData.event;
 
-  constructor(private deviceManager: DeviceManager) {
+  // SDB server status variables
+  private sdbStatus: boolean | undefined = undefined;
+  private checkInterval: NodeJS.Timeout | undefined;
+
+  constructor(
+    private deviceManager: DeviceManager,
+    private outputChannel: vscode.OutputChannel
+  ) {
     // Listen for device updates from the device manager
     this.deviceManager.onDevicesChanged(() => {
       this.refresh();
     });
+
+    // Start checking SDB status
+    this.startSdbStatusChecks();
+
+    // register sdb command
+    vscode.commands.registerCommand('tizen-commander.restartSdbServer', () => {
+      this.restartSdbServer();
+    });
+  }
+
+  private startSdbStatusChecks(): void {
+    // Check immediately
+    this.checkSdbStatus();
+    
+    // Then start interval
+    this.checkInterval = setInterval(() => {
+      this.checkSdbStatus();
+    }, 10000); // Check every 10 seconds
+  }
+
+  private async checkSdbStatus(): Promise<void> {
+    try {
+      this.sdbStatus = await isSdbServerRunning();
+      this.refresh();
+    } catch (error) {
+      this.outputChannel.appendLine(`Error checking SDB server status: ${error}`);
+      this.sdbStatus = false;
+      this.refresh();
+    }
+  }
+
+  private async restartSdbServer(): Promise<void> {
+    try {
+      this.outputChannel.appendLine('Restarting SDB server...');
+      this.sdbStatus = undefined; // Show as "Checking..." while restarting
+      this.refresh();
+
+      await startSdbServer();
+      await this.checkSdbStatus();
+      
+      this.outputChannel.appendLine('SDB server restarted successfully');
+    } catch (error) {
+      this.outputChannel.appendLine(`Error restarting SDB server: ${error}`);
+      vscode.window.showErrorMessage(`Failed to restart SDB server: ${error}`);
+      this.sdbStatus = false;
+      this.refresh();
+    }
   }
 
   refresh(): void {
     this._onDidChangeTreeData.fire();
   }
 
-  getTreeItem(element: DeviceTreeItem | DeviceDetailTreeItem): vscode.TreeItem {
+  getTreeItem(element: vscode.TreeItem): vscode.TreeItem {
     return element;
   }
 
-  getChildren(element?: DeviceTreeItem | DeviceDetailTreeItem): Thenable<(DeviceTreeItem | DeviceDetailTreeItem)[]> {
+  getChildren(element?: vscode.TreeItem): Thenable<vscode.TreeItem[]> {
     if (!element) {
-      // Root level - return all devices
+      // Root level - return SDB status items and all devices
+      const items: vscode.TreeItem[] = [];
+      
+      // Add SDB status item
+      items.push(new SdbStatusTreeItem(this.sdbStatus));
+      
+      // Add all devices
       const devices = this.deviceManager.getDevices();
-      return Promise.resolve(
-        devices.map(device => new DeviceTreeItem(
-          device,
-          vscode.TreeItemCollapsibleState.Collapsed
-        ))
-      );
+      if (devices.length > 0) {
+        devices.forEach(device => {
+          items.push(new DeviceTreeItem(
+            device,
+            vscode.TreeItemCollapsibleState.Collapsed
+          ));
+        });
+      } else {
+        // Show placeholder if no devices
+        const noDevicesItem = new vscode.TreeItem('No devices found', vscode.TreeItemCollapsibleState.None);
+        noDevicesItem.contextValue = 'noDevices';
+        items.push(noDevicesItem);
+      }
+      
+      return Promise.resolve(items);
     } else if (element instanceof DeviceTreeItem) {
       // Device level - return device details
       const device = element.device;
@@ -62,36 +131,43 @@ export class DeviceTreeDataProvider implements vscode.TreeDataProvider<DeviceTre
       ));
       
       // Model information
-        details.push(new DeviceDetailTreeItem(
-          'Model',
-          device.model,
-          device
-        ));
-        details.push(new DeviceDetailTreeItem(
-            'OS Version',
-            device.tizenVersion || 'unknown',
-            device
-        ));
+      details.push(new DeviceDetailTreeItem(
+        'Model',
+        device.model,
+        device
+      ));
+      
+      details.push(new DeviceDetailTreeItem(
+        'OS Version',
+        device.tizenVersion || 'unknown',
+        device
+      ));
       
       // Last connected timestamp
-        const lastConnected = new Date(device.lastConnected || 0);
-        details.push(new DeviceDetailTreeItem(
-          'Last Connected',
-          lastConnected.toLocaleString(),
-          device
-        ));
+      const lastConnected = new Date(device.lastConnected || 0);
+      details.push(new DeviceDetailTreeItem(
+        'Last Connected',
+        lastConnected.toLocaleString(),
+        device
+      ));
       
       return Promise.resolve(details);
     }
     
     return Promise.resolve([]);
   }
+
+  dispose() {
+    if (this.checkInterval) {
+      clearInterval(this.checkInterval);
+    }
+  }
 }
 
 // Register the tree view
-export function registerDeviceExplorer(context: vscode.ExtensionContext): vscode.Disposable {
+export function registerDeviceExplorer(context: vscode.ExtensionContext, outputChannel: vscode.OutputChannel): vscode.Disposable {
   const deviceManager = DeviceManager.getInstance();
-  const deviceTreeDataProvider = new DeviceTreeDataProvider(deviceManager);
+  const deviceTreeDataProvider = new DeviceTreeDataProvider(deviceManager, outputChannel);
   
   // Register the tree view with the provider
   const treeView = vscode.window.createTreeView('tizenDevices', {
@@ -155,7 +231,8 @@ export function registerDeviceExplorer(context: vscode.ExtensionContext): vscode
     refreshCommand, 
     connectCommand, 
     disconnectCommand, 
-    renameCommand
+    renameCommand,
+    { dispose: () => deviceTreeDataProvider.dispose() }
   );
   
   return treeView;

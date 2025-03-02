@@ -26,7 +26,7 @@ export function activate(context: vscode.ExtensionContext) {
 	const connectPackage = createTizenDeviceConnector(outputChannel);
 
     // Tree view for connected devices
-    registerDeviceExplorer(context);
+    registerDeviceExplorer(context, outputChannel);
     registerDetailCommands(context);
 
     // Add them to subscriptions for proper disposal
