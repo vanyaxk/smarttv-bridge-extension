@@ -12,7 +12,7 @@ export class SdbStatusTreeItem extends vscode.TreeItem {
         this.description = 'Running';
         this.iconPath = new vscode.ThemeIcon('check', new vscode.ThemeColor('testing.iconPassed'));
       } else {
-        this.description = 'Stopped';
+        this.description = 'Not running';
         this.iconPath = new vscode.ThemeIcon('error', new vscode.ThemeColor('testing.iconFailed'));
       }
       

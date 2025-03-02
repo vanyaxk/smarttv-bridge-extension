@@ -46,6 +46,10 @@
           "when": "view == tizenDevices && (viewItem == connectedDevice || viewItem == disconnectedDevice)"
         },
         {
+          "command": "tizen-commander.removeDeviceFromTree",
+          "when": "view == tizenDevices && (viewItem == connectedDevice || viewItem == disconnectedDevice)"
+        },
+        {
           "command": "tizen-commander.copyDeviceDetailValue",
           "when": "view == tizenDevices && viewItem =~ /deviceDetail-.*/"
         },
@@ -53,6 +57,13 @@
           "command": "tizen-commander.restartSdbServer",
           "when": "view == tizenDevices && viewItem == sdbStatusRow",
           "group": "inline"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "tizen-commander.connectToDevice",
+          "when": "view == tizenDevices",
+          "group": "navigation"
         }
       ]
     },
@@ -82,6 +93,10 @@
         "title": "Rename Device"
       },
       {
+        "command": "tizen-commander.removeDeviceFromTree",
+        "title": "Remove Device"
+      },
+      {
         "command": "tizen-commander.connectToDeviceFromTree",
         "title": "Connect",
         "icon": "$(plug)"
@@ -100,6 +115,11 @@
         "command": "tizen-commander.restartSdbServer",
         "title": "Restart SDB Server",
         "icon": "$(play-circle)"
+      },
+      {
+        "command": "tizen-commander.connectToDevice",
+        "title": "Add Device",
+        "icon": "$(add)"
       }
     ]
   },

@@ -207,6 +207,27 @@ export function registerDeviceExplorer(context: vscode.ExtensionContext, outputC
       );
     }
   });
+
+  const removeDeviceCommand = vscode.commands.registerCommand('tizen-commander.removeDeviceFromTree', async (item: DeviceTreeItem) => {
+    if (item.device && item.device.ip) {
+      await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: `Removing... ${item.device.name}`,
+          cancellable: false,
+        },
+        async () => {
+          try {
+            // remove device from global state
+            await deviceManager.removeDevice(item.device.ip);
+          } catch (error) {
+            // Show error message
+            vscode.window.showErrorMessage(`Failed to remove ${item.device.ip}: ${error}`);
+          }
+        }
+      );
+    }
+  });
   
   const disconnectCommand = vscode.commands.registerCommand('tizen-commander.disconnectDeviceFromTree', (item: DeviceTreeItem) => {
     if (item.device && item.device.ip) {
@@ -232,6 +253,7 @@ export function registerDeviceExplorer(context: vscode.ExtensionContext, outputC
     connectCommand, 
     disconnectCommand, 
     renameCommand,
+    removeDeviceCommand,
     { dispose: () => deviceTreeDataProvider.dispose() }
   );
   

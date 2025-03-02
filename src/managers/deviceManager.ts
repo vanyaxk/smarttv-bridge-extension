@@ -72,7 +72,8 @@ export class DeviceManager {
             // Add new device
             devices.push({
                 ...device,
-                lastConnected: new Date().toISOString()
+                lastConnected: new Date().toISOString(),
+                isConnected: true
             });
         }
         
