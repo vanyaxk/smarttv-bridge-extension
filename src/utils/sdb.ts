@@ -57,3 +57,25 @@ export async function connectSdbDevice(ip: string): Promise<unknown> {
 export async function disconnectSdbDevice(ip: string): Promise<unknown> {
   return runShellCommand(`sdb disconnect ${ip}`);
 }
+
+export async function runAppWithDebug({
+  packageName,
+  packageId,
+  addZero
+}: {
+  packageName: string,
+  packageId: string,
+  addZero: boolean
+}) {
+  return runShellCommand(`sdb shell 0 debug ${packageId}.${packageName} ${addZero ? '0' : ''}`);
+}
+
+export async function forwardSdbPort({
+  devicePort,
+  localPort
+}: {
+  devicePort: number,
+  localPort: number
+}): Promise<string> {
+  return runShellCommand(`sdb forward tcp:${devicePort} tcp:${localPort}`);
+}

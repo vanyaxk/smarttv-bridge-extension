@@ -9,18 +9,12 @@ export async function getDevices(): Promise<DeviceInfo[]> {
     const lines = deviceOutput.trim().split('\n');
     
     for (const line of lines) {
-      // Each line is expected to have at least three columns.
-      // Example line: "192.168.0.192:26101     device          UE43TU7022KXXH"
       const parts = line.trim().split(/\s+/);
       if (parts.length >= 3) {
-        // The first column includes IP and port (e.g. "192.168.0.192:26101")
         const ipPort = parts[0];
-        const ip = ipPort.split(':')[0];  // Extract IP without the port
-        
-        // The third column is the model
+        const ip = ipPort.split(':')[0];
         const model = parts[2].toUpperCase();
         
-        // Determine Tizen version based on model info
         let tizenVersion = "unknown";
           if (model.includes("CU") || model.includes("DU")) {
             tizenVersion = "7.0"; // 2023-2024
@@ -44,7 +38,6 @@ export async function getDevices(): Promise<DeviceInfo[]> {
         
         const parsedTizenVersion = tizenVersion !== "unknown" ? `Tizen ${tizenVersion}` : tizenVersion;
 
-        // Add this device to our array
         devices.push({ ip, model, tizenVersion: parsedTizenVersion });
       }
     }
